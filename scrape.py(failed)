@@ -1,0 +1,41 @@
+from bs4 import BeautifulSoup
+import requests
+import pandas as pd
+import re
+
+years = []
+for year in range(1960, 2013):
+    print(year,end=' ')
+    soup = BeautifulSoup(requests.get("http://billboardtop100of.com/" + str(year) + "-2/").text, 'html.parser')
+    yr = pd.read_html(str(soup.find_all('div',id='content')[0].find('table')))[0]
+    yr['year'] = 1960
+    years.append(yr)
+
+
+print(2013,end=' ')
+soup = BeautifulSoup(requests.get("http://billboardtop100of.com/2013-2/").text,'html.parser')
+yr = []
+for line in soup.find_all('div',id='content')[0].find('small').stripped_strings:
+    line = line.replace(u'\xa0', u' ')
+    yr.append(re.split(r'\.    | – ',line))
+
+yr = pd.DataFrame(yr)
+yr['year'] = 2013
+years.append(yr)
+
+print(2014,end=' ')
+soup = BeautifulSoup(requests.get("http://billboardtop100of.com/2014-2/").text,'html.parser')
+yr = pd.read_html(str(soup.find_all('div',class_='entry-content')[0].find('table')))[0]
+yr['year'] = 2014
+years.append(yr)
+
+print(2015,end=' ')
+soup = BeautifulSoup(requests.get("http://billboardtop100of.com/2015-2/").text,'html.parser')
+soup = soup.find_all('div',class_='entry-content')[0].find('table')
+for s in soup('p'):
+    s.extract() 
+yr = pd.read_html(str(soup))[0]
+yr['year'] = 2015
+years.append(yr)
+
+artists = years[0].append(years[1:])

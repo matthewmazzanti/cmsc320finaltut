@@ -80,9 +80,11 @@ def pron_dict(unique):
             word_vowels.append([x for x in phone if x in phones['vowel']])
         
         prons[word] = word_vowels
+
+    prons['a'] = prons['a'][0:1]
    
     cts = Counter(flt2(list(prons.values())))
-   
+    
     for word in unique:
         prons[word] = best(cts,prons[word])
 
@@ -293,62 +295,89 @@ Where the slums got so much soul
 Pol Pot
 '''
 
-class lyrics_analysis():
+def lyrics_analysis(dirty):
+    # Clean up the lyrics, remove capitals and punctuation
+    clean = clean_text(dirty) 
+    # Set of unique words
+    word_bag = Counter(clean.split()) 
+    # get unique pronunciations per word
+    prons = pron_dict(word_bag.keys())
 
-    def __init__(this, lyric):
-        this.dirty = lyric
-        # Clean up the lyrics, remove capitals and punctuation
-        this.clean = clean_text(this.dirty) 
-        # Set of unique words
-        this.word_bag = Counter(this.clean.split()) 
-        # get unique pronunciations per word
-        this.prons = pron_dict(this.word_bag.keys())
+    # generate pronuncations for each word in each line
+    lines = clean.split('\n')
+    lines = list(map(lambda x: x.split(), lines))
 
-        # generate pronuncations for each word in each line
-        lines = this.clean.split('\n')
-        lines = list(map(lambda x: x.split(), lines))
-        this.lines = lines
-        lines_pron = []
-        for line in lines:
-            word_pron = []
-            for word in line:
-                word_pron.append(this.prons[word])
-            lines_pron.append(word_pron)
+    # Get pronunciation of each word in song
+    lines_pron = []
+    for line in lines:
+        word_pron = []
+        for word in line:
+            word_pron.append(prons[word])
+        lines_pron.append(word_pron)
+    
+    # Make lookup tuples of (line, word) to look 
+    lookup = []
+    phones = []
+    word_count = 0
+    for ln_idx, line in enumerate(lines_pron):
+        for wd_idx, word in enumerate(line):
+            for phone in word:
+                lookup.append((ln_idx,wd_idx))
+                phones.append(phone)
+                
+            word_count += 1
 
-        this.lines_pron = lines_pron
+    keys,ls = to_int_keys_best(phones)
+    char_keys = ''.join(list(map(lambda x: chr(97+x),keys)))
+
+    repeats = rpts.supermax(char_keys,1)
+    
+    rhymes = []
+    for locs, length, seq in repeats:
+        rhyme_loc = []
+        rhyme = []
+        for loc in locs:
+            phrase = []
+            for i in range(0,length):
+                phrase.append(lookup[loc + i])
+            phrase = rem_dup(phrase)
+            rhyme_loc.append(phrase)
+            rhyme.append(list(map(lambda x: lines[x[0]][x[1]], phrase)))
+
+        rhymes.append((rhyme,locs,length,seq))
+
+    rhymes_diff = []
+    for rhyme,locs,length,seq in rhymes:
+        sets = []
+        for group in rhyme:
+            sets.append(set(group))
         
-        #print(this.lines_pron)
+        mask = [1] * len(sets)
+        for idx in it.combinations(range(0,len(sets)),2):
+            if similarity(sets[idx[0]],sets[idx[1]]) < .5:
+                mask[idx[1]] = 0
 
-        lookup = []
-        phones = []
-        word_count = 0
-        for ln_idx, line in enumerate(this.lines_pron):
-            for wd_idx, word in enumerate(line):
-                for phone in word:
-                    lookup.append((ln_idx,wd_idx))
-                    phones.append(phone)
-                    
-                word_count += 1
+        rhyme_diff = list(it.compress(rhyme, mask))
+        if(len(rhyme_diff) > 1):
+            rhymes_diff.append((rhyme_diff,locs,length,seq))
 
-        keys,ls = to_int_keys_best(phones)
-        char_keys = ''.join(list(map(lambda x: chr(97+x),keys)))
+    
+    print(len(rhymes_diff))
+    total = 0
+    max_len = 0
+    for _,locs,length,_ in rhymes_diff:
+        total += length
+        if max_len < length:
+            max_len = length
+    
+    print(max_len)
+    mean = total/len(rhymes_diff)
+    print(mean)
+    print(len(word_bag.keys()))
+        
 
-        repeats = rpts.supermax(char_keys,1)
-        print(len(repeats))
-
-        for locs, length, seq in repeats:
-            rhyme_loc = []
-            rhyme = []
-            for loc in locs:
-                phrase = []
-                for i in range(0,length):
-                    phrase.append(lookup[loc + i])
-                phrase = rem_dup(phrase)
-                rhyme_loc.append(phrase)
-                rhyme.append(list(map(lambda x: this.lines[x[0]][x[1]], phrase)))
-
-
-
+def similarity(set1, set2):
+    return (len(set1 - set2) + len(set2 - set1))/(len(set1)+len(set2))
 
 
 
