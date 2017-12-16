@@ -4,15 +4,26 @@ from collections import defaultdict, Counter
 import re
 import itertools as it
 from functools import reduce
+import repeats as rpts
 
-def f7(seq):
-    seen = set()
-    seen_add = seen.add
-    return [x for x in seq if not (x in seen or seen_add(x))]
+reg = [(re.compile('\'em'), 'them'),
+       (re.compile('in\''), 'ing'),
+       (re.compile('\[.*\]'),''),
+       (re.compile('[\n]+'),'\n'),
+       (re.compile('[^a-z\' \n]'), '')]
 
-def load_phones():
+def clean_text(dirty):
+    clean = dirty.lower()
+    for ex,replace in reg:
+        clean = ex.sub(replace,clean)
+    
+    clean = '\n'.join(rem_dup(clean.split('\n')))
+
+    return clean
+
+def load_phones(file_name='cmudict-0.7b.phones'):
     phones = defaultdict(lambda: set([]))
-    with open('cmudict-0.7b.phones','r') as f:
+    with open(file_name,'r') as f:
         for line in f:
             split = line.split()
             phones[split[1]].add(split[0])
@@ -25,6 +36,14 @@ def load_phones():
     phones['vowel'] = vowels
     
     return phones
+
+phones = load_phones()
+
+def rem_dup(seq):
+    seen = set()
+    seen_add = seen.add
+    return [x for x in seq if not (x in seen or seen_add(x))]
+
 
 def flt(lst):
     return list(it.chain.from_iterable(lst))
@@ -50,7 +69,42 @@ def to_int_keys_best(l):
     index = {v: i for i, v in enumerate(ls)}
     return [index[v] for v in l],ls
 
-sentence = '''Look
+
+
+def pron_dict(unique):
+    prons = {}
+    for word in unique:
+        word_phones = map(lambda x: x.split(), pronouncing.phones_for_word(word))
+        word_vowels = []
+        for phone in word_phones:
+            word_vowels.append([x for x in phone if x in phones['vowel']])
+        
+        prons[word] = word_vowels
+   
+    cts = Counter(flt2(list(prons.values())))
+   
+    for word in unique:
+        prons[word] = best(cts,prons[word])
+
+    return prons
+
+# provides best pronunciation given list of pronunciation counts
+def best(cts, prons):
+    if len(prons) > 1:
+        scores = []
+        for pron in prons:
+            score = 0
+            for phone in pron:
+                score += cts[phone]
+            scores.append(score)
+        
+        return prons[scores.index(max(scores))]
+    elif len(prons) == 1:
+        return prons[0]
+    else:
+        return []
+
+sentence1 = '''Look
 If you had
 One shot
 Or one opportunity
@@ -129,45 +183,126 @@ This opportunity comes once in a lifetime you better
 You can do anything you set your mind to, man
 '''
 
-class lyrics():
-    reg = [(re.compile('in\''), 'ing'),
-           (re.compile('\[.*\]'),''),
-           (re.compile('[\n]+'),'\n'),
-           (re.compile('[^a-z\' \n]'), '')]
+sentence2 = '''
+Yo, yo, yo, y'all can't stand right here
+In his right hand was your man's worst nightmare
+Loud enough to burst his right eardrum close-range
+The game is not only dangerous, but it's most strange
+I sell rhymes like dimes
+The one who mostly keep cash but brag about the broker times
+Joking rhymes, like the "Is you just happy to see me?" trick
+Classical slapstick rappers need Chapstick
+A lot of 'em sound like they in a talent show
+So I give 'em something to remember like the Alamo
+Tally-ho! A high Joker like a Spades game
+Came back from five years laying and stayed the same
+I'm saying - electromagnetic field it blocks all logic, Spock
+And G-Shocks her biological clock
+When I hit it, slit it to the shitter, thought I killed her goose
+Her Power U was pure Brita water, filtered juice
+Keep a pen like a fiend keep a pipe with him
+Gentleman who lent a pen to a friend who write with him
+Never seen the shit again but he's still my dunny
+The only thing that come between us is krill and money
+I sell rhymes like dimes
+The one who mostly keep cash but brag about the broke times
+Better rhymes make for better songs, it matters not
+If you got a lot of what it takes just to get along
+Surrender now or suffer serious setbacks
+Got get-back, connects wet-back, get stacks
+Even if you gots to get jet-black, head to toe
+To get the dough, battle for bottles of Mo' or 'dro
+This fly flow take practice like Tae Bo with Billy Blanks
+"Oh, you're too kind!" "Really? Thanks!"
+To the gone and lost forever like "Oh My Darling Clementine"
+He hold his heart when he telling rhyme
+When it's his time, I hope his soul go to Heaven
+He nasty like the old time Old No. 7
+You still taste it when you chase it with the Coca-Cola
+Make 'em wish they could erase it out the Motorola
+I told her - no credit for a bag
+If you want what they got, then go get it, it's all gak
+Only in America could you find a way to earn a healthy buck
+And still keep your attitude on self-destruct
+I sell rhymes like dimes
+The one who mostly keep cash but brag about the broker times
+Joking rhymes, like the "Is you just happy to see me?" trick
+Classical slapstick rappers need Chapstick
+A lot of 'em sound like they in a talent show
+So I give 'em something to remember like the Alamo
+Tally-ho! A high Joker like a Spades game
+Came back from five years laying and stayed the same
+I'm saying - electromagnetic field it blocks all logic, Spock
+And G-Shocks her biological clock
+When I hit it, slit it to the shitter, thought I killed her goose
+Her Power U was pure Brita water, filtered juice
+Keep a pen like a fiend keep a pipe with him
+Gentleman who lent a pen to a friend who write with him
+Never seen the shit again but he's still my dunny
+The only thing that come between us is krill and money
+I sell rhymes like dimes
+The one who mostly keep cash but brag about the broke times
+'''
 
-    phones = load_phones()
+sentence3 = '''
+So, you've been to school
+For a year or two
+And you know you've seen it all
+In daddy's car
+Thinking you'll go far
+Back east your type don't crawl
+Playing ethnicky jazz
+To parade your snazz
+On your five-grand stereo
+Braggin' that you know
+How the niggers feel cold
+And the slum's got so much soul
+It's time to taste what you most fear
+Right Guard will not help you here
+Brace yourself, my dear
+Brace yourself, my dear
+It's a holiday in Cambodia
+It's tough, kid, but it's life
+It's a holiday in Cambodia
+Don't forget to pack a wife
+You're a star-belly snitch
+You suck like a leech
+You want everyone to act like you
+Kiss ass while you bitch
+So you can get rich
+While your boss gets richer off you
+Well, you'll work harder
+With a gun in your back
+For a bowl of rice a day
+Slave for soldiers
+Till you starve
+Then your head is skewered on a stake
+Now you can go where the people are one
+Now you can go where they get things done
+What you need, my son...
+What you need, my son...
+Is a holiday in Cambodia
+Where people are dressed in black
+A holiday in Cambodia
+Where you'll kiss ass or crack
+Pol Pot, Pol Pot, Pol Pot, Pol Pot
+It's a holiday in Cambodia
+Where you'll do what you're told
+It's a holiday in Cambodia
+Where the slums got so much soul
+Pol Pot
+'''
 
-    def __init__(this, lyrics):
-        this.dirty = lyrics
+class lyrics_analysis():
 
+    def __init__(this, lyric):
+        this.dirty = lyric
         # Clean up the lyrics, remove capitals and punctuation
-        this.clean = this.dirty.lower()
-        for ex,replace in this.reg:
-            this.clean = ex.sub(replace,this.clean)
-        
-        print(this.clean)
-        this.clean = '\n'.join(f7(this.clean.split('\n')))
-
+        this.clean = clean_text(this.dirty) 
         # Set of unique words
-        this.set = set(this.clean.split())
-      
+        this.word_bag = Counter(this.clean.split()) 
         # get unique pronunciations per word
-        prons = {}
-        for word in this.set:
-            word_phones = list(map(lambda x: x.split(), pronouncing.phones_for_word(word)))
-            word_vowels = []
-            for phone in word_phones:
-                word_vowels.append([x for x in phone if x in this.phones['vowel']])
-            
-            prons[word] = word_vowels
-       
-        cts = Counter(flt2(list(prons.values())))
-       
-        for word in this.set:
-            prons[word] = this.best(cts,prons[word])
-        
-        # save pronunciation dictionary
-        this.prons = prons
+        this.prons = pron_dict(this.word_bag.keys())
 
         # generate pronuncations for each word in each line
         lines = this.clean.split('\n')
@@ -182,7 +317,7 @@ class lyrics():
 
         this.lines_pron = lines_pron
         
-        print(this.lines_pron)
+        #print(this.lines_pron)
 
         lookup = []
         phones = []
@@ -197,102 +332,26 @@ class lyrics():
 
         keys,ls = to_int_keys_best(phones)
         char_keys = ''.join(list(map(lambda x: chr(97+x),keys)))
-        print(char_keys)
 
-        window = 5
-        patterns = set([])
-        for i in range(0, len(this.lines_pron) - window):
-            lines = flt2(this.lines_pron[i:i+window])
-            wind_patterns = defaultdict(lambda: 0)
+        repeats = rpts.supermax(char_keys,1)
+        print(len(repeats))
 
-            for j in range(2, 10):
-                for k in range(0, len(lines) - j + 1):
-                    wind_patterns[tuple(lines[k:k + j])] += 1
-
-            patts = list(filter(lambda x: x[1] > 1, wind_patterns.items()))
-            patterns.update([x[0] for x in patts])
-
-
-        for patt in patterns:
-            group = []
-            for s in this.kmp(phones, list(patt)):
-                words = []
-                for i in range(s, s+len(patt)):
-                    words.append(lookup[i])
-               
-                words = f7(words)
-                
-                words2 = []
-                for x,y in words:
-                    words2.append(this.lines[x][y])
-                group.append(words2)
-
-            print(group)
-
-    # provides best pronunciation given list of pronunciations
-    def best(this, cts, prons):
-        if len(prons) > 1:
-            scores = []
-            for pron in prons:
-                score = 0
-                for phone in pron:
-                    score += cts[phone]
-                scores.append(score)
-            
-            return prons[scores.index(max(scores))]
-        elif len(prons) == 1:
-            return prons[0]
-        else:
-            return []
+        for locs, length, seq in repeats:
+            rhyme_loc = []
+            rhyme = []
+            for loc in locs:
+                phrase = []
+                for i in range(0,length):
+                    phrase.append(lookup[loc + i])
+                phrase = rem_dup(phrase)
+                rhyme_loc.append(phrase)
+                rhyme.append(list(map(lambda x: this.lines[x[0]][x[1]], phrase)))
 
 
-    def find_sublist(sub, bigger):
-        if not bigger:
-            return -1
-        if not sub:
-            return 0
-        first, rest = sub[0], sub[1:]
-        pos = 0
-        try:
-            while True:
-                pos = bigger.index(first, pos) + 1
-                if not rest or bigger[pos:pos+len(rest)] == rest:
-                    return pos
-        except ValueError:
-            return -1
 
 
-    def kmp(this, text, pattern):
-
-        '''Yields all starting positions of copies of the pattern in the text.
-    Calling conventions are similar to string.find, but its arguments can be
-    lists or iterators, not just strings, it returns all matches, not just
-    the first one, and it does not need the whole text in memory at once.
-    Whenever it yields, it will have read the text exactly up to and including
-    the match that caused the yield.'''
-
-        # allow indexing into pattern and protect against change during yield
-        pattern = list(pattern)
-
-        # build table of shift amounts
-        shifts = [1] * (len(pattern) + 1)
-        shift = 1
-        for pos in range(len(pattern)):
-            while shift <= pos and pattern[pos] != pattern[pos-shift]:
-                shift += shifts[pos-shift]
-            shifts[pos+1] = shift
-
-        # do the actual search
-        startPos = 0
-        matchLen = 0
-        for c in text:
-            while matchLen == len(pattern) or \
-                  matchLen >= 0 and pattern[matchLen] != c:
-                startPos += shifts[matchLen]
-                matchLen -= shifts[matchLen]
-            matchLen += 1
-            if matchLen == len(pattern):
-                yield startPos
 
 
-lyr = lyrics(sentence)
+lyr = lyrics_analysis(sentence1)
+lyr = lyrics_analysis(sentence2)
+lyr = lyrics_analysis(sentence3)

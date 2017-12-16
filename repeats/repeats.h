@@ -14,6 +14,6 @@ struct REPEAT {
     std::string sequence;
 };
 
-std::vector<REPEAT> supermax(const char *sequence);
+std::vector<REPEAT> supermax(const char *sequence,int min);
 
 #endif

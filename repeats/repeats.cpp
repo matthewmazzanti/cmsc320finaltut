@@ -2,14 +2,14 @@
 
 using namespace seqan;
 
-std::vector<REPEAT> supermax(const char *sequence)
+std::vector<REPEAT> supermax(const char *sequence, int min)
 {
 	String<char> myString = sequence;
 
 	typedef Index< String<char> > TMyIndex;
 	TMyIndex myIndex(myString);
 
-	Iterator< TMyIndex, SuperMaxRepeats >::Type myRepeatIterator(myIndex, 2);
+	Iterator< TMyIndex, SuperMaxRepeats >::Type myRepeatIterator(myIndex, min);
 
     std::vector<REPEAT> repeats;
 	while (!atEnd(myRepeatIterator))

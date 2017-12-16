@@ -8,22 +8,27 @@ static PyObject *repeats_supermax(PyObject *self, PyObject *args)
     (void)self;
 
     const char *command;
-
-    if (!PyArg_ParseTuple(args, "s", &command))
+    int min;
+        
+    if (!PyArg_ParseTuple(args, "si", &command, &min))
         return NULL;
 
-    std::vector<REPEAT> repeats = supermax(command);
+    std::vector<REPEAT> repeats = supermax(command,min);
 
     PyObject* list = PyList_New(PyLong_AsSsize_t(PyLong_FromLong(0)));
     for(unsigned long i = 0; i < repeats.size(); i++) {
+        PyObject* repeat = PyList_New(PyLong_AsSsize_t(PyLong_FromLong(0)));
+
         PyObject* occur = PyList_New(PyLong_AsSsize_t(PyLong_FromLong(0)));
         for(unsigned long j = 0; j < repeats[i].occur.size(); j++) {
             PyList_Append(occur, PyLong_FromLong((long)repeats[i].occur[j]));
         }
 
-        PyList_Append(list, occur);
-        PyList_Append(list, PyLong_FromLong((long)repeats[i].length));
-        PyList_Append(list, PyUnicode_FromString(repeats[i].sequence.c_str()));
+        PyList_Append(repeat, occur);
+        PyList_Append(repeat, PyLong_FromLong((long)repeats[i].length));
+        PyList_Append(repeat, PyUnicode_FromString(repeats[i].sequence.c_str()));
+
+        PyList_Append(list, repeat);
     }
 
     return list;
