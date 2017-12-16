@@ -1,72 +1,10 @@
 import pronouncing
 import string
-from collections import defaultdict, Counter
-import re
-import itertools as it
+from collections import Counter
 import repeats as rpts
-
-reg = [(re.compile('\'em'), 'them'),
-       (re.compile('in\''), 'ing'),
-       (re.compile('\[.*\]'),''),
-       (re.compile('[\n]+'),'\n'),
-       (re.compile('[^a-z\' \n]'), '')]
-
-def clean_text(dirty):
-    clean = dirty.lower()
-    for ex,replace in reg:
-        clean = ex.sub(replace,clean)
-
-    return clean
-
-def load_phones(file_name='cmudict-0.7b.phones'):
-    phones = defaultdict(lambda: set([]))
-    with open(file_name,'r') as f:
-        for line in f:
-            split = line.split()
-            phones[split[1]].add(split[0])
-
-    vowels = set([])
-    for phone in phones['vowel']:
-        vowels.add(phone)
-        for i in range(0,2):
-            vowels.add(phone + str(i))
-    phones['vowel'] = vowels
-    
-    return phones
+from helper import *
 
 phones = load_phones()
-
-def rem_dup(seq):
-    seen = set()
-    seen_add = seen.add
-    return [x for x in seq if not (x in seen or seen_add(x))]
-
-
-def flt(lst):
-    return list(it.chain.from_iterable(lst))
-
-def flt2(lst):
-    for _ in range(0,2):
-        lst = flt(lst) 
-
-    return lst
-
-def to_int_keys_best(l):
-    """
-    l: iterable of keys
-    returns: a list with integer keys
-    """
-    seen = set()
-    ls = []
-    for e in l:
-        if not e in seen:
-            ls.append(e)
-            seen.add(e)
-    ls.sort()
-    index = {v: i for i, v in enumerate(ls)}
-    return [index[v] for v in l],ls
-
-
 
 def pron_dict(unique):
     prons = {}
@@ -78,7 +16,7 @@ def pron_dict(unique):
         
         prons[word] = word_vowels
     
-    cts = Counter(flt2(list(prons.values())))
+    cts = Counter(flt(flt(list(prons.values()))))
     
     for word in unique:
         prons[word] = best(cts,prons[word])
@@ -173,7 +111,6 @@ def lyrics_analysis(dirty):
 
     #print(rhymes_diff)
     
-    print(len(rhymes_diff))
     total = 0
     max_len = 0
     for _,locs,length,_ in rhymes_diff:
@@ -181,17 +118,16 @@ def lyrics_analysis(dirty):
         if max_len < length:
             max_len = length
     
-    print(max_len)
     denom = len(rhymes_diff)
     if(denom > 0):
         mean = total/len(rhymes_diff)
     else:
         mean = -1
-    print(mean)
-    print(len(word_bag.keys()))
 
     return {'mean':mean,
-            'num_rhymes':denom}
+            'num_rhymes':denom,
+            'word_count':len(words),
+            'unique_word_count':len(word_bag.keys())}
         
 
 sentence1 = '''Look
